@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillSandbox — GSP1154 Offline Simulator</title>
+<style>
+  :root{
+    --bg-app:#eef0f3;
+    --manual-bg:#ffffff;
+    --manual-border:#e1e4ea;
+    --manual-muted:#f6f7f9;
+    --text-primary:#1a1d23;
+    --text-secondary:#5b6270;
+    --text-faint:#8a90a0;
+    --accent:#1a73e8;
+    --accent-dark:#1558b0;
+    --accent-soft:#e8f0fe;
+    --success:#188038;
+    --success-soft:#e6f4ea;
+    --warning:#e8710a;
+    --warning-soft:#fef3e6;
+    --danger:#d93025;
+    --danger-soft:#fce8e6;
+    --console-bg:#1f2023;
+    --console-panel:#28292c;
+    --console-panel-2:#2f3033;
+    --console-border:#3c3d41;
+    --console-text:#e8eaed;
+    --console-text-dim:#9aa0a6;
+    --console-accent:#8ab4f8;
+    --radius:10px;
+    --radius-sm:6px;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--bg-app);
+    color:var(--text-primary);
+    overflow:hidden;
+  }
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#c3c8d1;border-radius:8px;border:2px solid var(--manual-bg);}
+  .console-panel ::-webkit-scrollbar-thumb{background:#55575c;border:2px solid var(--console-bg);}
+  .app-shell{display:flex;flex-direction:column;height:100vh;}
+
+  /* ---------- TOP NAV ---------- */
+  .topnav{
+    display:flex;align-items:center;gap:16px;
+    padding:10px 18px;
+    background:#fff;
+    border-bottom:1px solid var(--manual-border);
+    flex-shrink:0;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px;letter-spacing:-0.02em;}
+  .brand-mark{
+    width:26px;height:26px;border-radius:7px;
+    background:linear-gradient(135deg,#1a73e8,#34a853);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:14px;font-weight:800;
+  }
+  .badge-offline{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--success-soft);color:var(--success);
+    font-size:12px;font-weight:600;
+    padding:4px 10px;border-radius:999px;
+    white-space:nowrap;
+  }
+  .badge-offline .dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px var(--success-soft);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .lab-title{
+    flex:1;min-width:220px;
+    font-size:13px;color:var(--text-secondary);
+    background:var(--manual-muted);
+    border:1px solid var(--manual-border);
+    padding:6px 12px;border-radius:999px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .lab-title b{color:var(--text-primary);font-weight:600;}
+  .timer-block{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .timer-display{
+    font-family:var(--mono);font-size:16px;font-weight:700;
+    background:var(--manual-muted);border:1px solid var(--manual-border);
+    padding:6px 12px;border-radius:var(--radius-sm);min-width:78px;text-align:center;
+    color:var(--text-primary);
+  }
+  .timer-display.warn{color:var(--warning);border-color:var(--warning);background:var(--warning-soft);}
+  .timer-display.done{color:var(--danger);border-color:var(--danger);background:var(--danger-soft);}
+  .btn{
+    font-family:inherit;font-size:13px;font-weight:600;
+    border-radius:var(--radius-sm);border:1px solid transparent;
+    padding:6px 13px;cursor:pointer;transition:filter .12s, background .12s;
+    display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-primary:disabled{background:#a9c3ea;cursor:not-allowed;}
+  .btn-ghost{background:#fff;border-color:var(--manual-border);color:var(--text-primary);}
+  .btn-ghost:hover{background:var(--manual-muted);}
+  .btn-danger-ghost{background:#fff;border-color:var(--danger);color:var(--danger);}
+  .btn-danger-ghost:hover{background:var(--danger-soft);}
+  .btn-sm{padding:4px 9px;font-size:12px;}
+
+  /* ---------- WORKSPACE SPLIT ---------- */
+  .workspace{display:flex;flex:1;min-height:0;}
+  .manual-panel{
+    width:45%;min-width:340px;
+    background:var(--manual-bg);
+    border-right:1px solid var(--manual-border);
+    overflow-y:auto;
+    padding:18px 20px 60px;
+  }
+  .console-panel{
+    width:55%;flex:1;
+    background:var(--console-bg);
+    color:var(--console-text);
+    display:flex;flex-direction:column;
+    min-width:380px;
+    overflow:hidden;
+  }
+
+  /* ---------- MANUAL ---------- */
+  .manual-header{margin-bottom:14px;}
+  .manual-header h1{font-size:18px;margin:0 0 4px;}
+  .manual-header p{margin:0;font-size:13px;color:var(--text-secondary);line-height:1.5;}
+  .task{
+    border:1px solid var(--manual-border);
+    border-radius:var(--radius);
+    margin-bottom:12px;
+    overflow:hidden;
+    background:#fff;
+  }
+  .task-head{
+    display:flex;align-items:center;gap:10px;
+    padding:13px 15px;cursor:pointer;user-select:none;
+    background:var(--manual-muted);
+  }
+  .task-head:hover{background:#eef1f5;}
+  .task-num{
+    width:24px;height:24px;border-radius:50%;
+    background:#fff;border:1.5px solid var(--accent);color:var(--accent);
+    font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .task-num.complete{background:var(--success);border-color:var(--success);color:#fff;}
+  .task-head-title{flex:1;font-size:14px;font-weight:600;}
+  .task-head-sub{font-size:11.5px;color:var(--text-faint);}
+  .chevron{transition:transform .18s;color:var(--text-faint);font-size:11px;}
+  .task.open .chevron{transform:rotate(90deg);}
+  .task-body{display:none;padding:14px 16px 18px;font-size:13.5px;line-height:1.6;color:var(--text-primary);}
+  .task.open .task-body{display:block;}
+  .task-body p{margin:0 0 10px;}
+  .task-body ol{margin:0 0 14px;padding-left:20px;}
+  .task-body li{margin-bottom:6px;}
+  .step-list{list-style:none;margin:0 0 14px;padding:0;}
+  .step-list li{
+    display:flex;gap:8px;margin-bottom:7px;font-size:13px;color:var(--text-secondary);
+  }
+  .step-list li::before{content:"→";color:var(--accent);font-weight:700;flex-shrink:0;}
+
+  .snippet{
+    border:1px solid var(--manual-border);
+    border-radius:var(--radius-sm);
+    margin:10px 0 16px;
+    overflow:hidden;
+    background:#fbfbfc;
+  }
+  .snippet-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:7px 10px;background:var(--manual-muted);
+    border-bottom:1px solid var(--manual-border);
+  }
+  .snippet-label{font-size:11.5px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;}
+  .snippet-actions{display:flex;gap:6px;}
+  .snippet-body{
+    padding:10px 12px;font-family:var(--mono);font-size:12px;line-height:1.6;
+    white-space:pre-wrap;word-break:break-word;color:#2b2f38;max-height:180px;overflow-y:auto;
+  }
+  .snippet-meta{padding:6px 12px;font-size:11px;color:var(--text-faint);border-top:1px dashed var(--manual-border);background:#fff;}
+
+  .check-btn-row{display:flex;align-items:center;gap:10px;margin-top:6px;}
+  .progress-box{
+    margin-top:10px;border:1px solid var(--manual-border);border-radius:var(--radius-sm);
+    padding:10px 12px;background:var(--manual-muted);display:none;
+  }
+  .progress-box.show{display:block;}
+  .progress-box .p-summary{font-size:12.5px;font-weight:700;margin-bottom:8px;}
+  .progress-box .p-summary.ok{color:var(--success);}
+  .progress-box .p-summary.pending{color:var(--warning);}
+  .p-item{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:6px;color:var(--text-secondary);}
+  .p-item .ic{width:16px;height:16px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;}
+  .p-item.done .ic{background:var(--success);color:#fff;}
+  .p-item.todo .ic{background:#dfe2e8;color:#8a90a0;}
+  .p-item.done{color:var(--text-primary);}
+
+  /* ---------- CONSOLE SUBHEADER ---------- */
+  .console-subheader{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 16px;background:var(--console-panel);border-bottom:1px solid var(--console-border);flex-shrink:0;
+  }
+  .title-input{
+    background:transparent;border:1px solid transparent;color:var(--console-text);
+    font-size:14px;font-weight:600;padding:5px 8px;border-radius:var(--radius-sm);
+    min-width:140px;font-family:inherit;
+  }
+  .title-input:hover,.title-input:focus{border-color:var(--console-border);background:var(--console-bg);outline:none;}
+  .region-select{
+    background:var(--console-bg);color:var(--console-text-dim);border:1px solid var(--console-border);
+    border-radius:var(--radius-sm);padding:5px 8px;font-size:12px;font-family:inherit;
+  }
+  .subheader-spacer{flex:1;}
+  .console-btn{
+    background:var(--console-panel-2);color:var(--console-text);border:1px solid var(--console-border);
+    border-radius:var(--radius-sm);padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .console-btn:hover{background:#3a3b3f;}
+  .console-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .console-btn.deploy{background:var(--success);border-color:var(--success);color:#fff;}
+  .console-btn.deploy:hover{filter:brightness(1.08);}
+
+  /* ---------- STUDIO CANVAS ---------- */
+  .studio-columns{
+    flex:1;min-height:0;display:flex;gap:0;overflow:hidden;
+  }
+  .studio-columns.flash-highlight{animation:flashcol 0.9s ease;}
+  @keyframes flashcol{0%{box-shadow:inset 0 0 0 2px var(--accent);}100%{box-shadow:inset 0 0 0 0 transparent;}}
+  .studio-column{
+    flex:1 1 50%;min-width:0;display:flex;flex-direction:column;
+    border-right:1px solid var(--console-border);overflow-y:auto;padding:14px 16px 30px;
+  }
+  .studio-columns:not(.compare-mode) .col-b{display:none;}
+  .studio-columns:not(.compare-mode) .col-a{flex:1 1 100%;border-right:none;}
+  .col-tag{
+    display:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--console-accent);
+    background:rgba(138,180,248,0.12);padding:2px 8px;border-radius:999px;width:fit-content;margin-bottom:10px;
+  }
+  .studio-columns.compare-mode .col-tag{display:inline-block;}
+
+  .param-sidebar{
+    border:1px solid var(--console-border);background:var(--console-panel);
+    border-radius:var(--radius);padding:12px;margin-bottom:12px;
+  }
+  .field-label{
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--console-text-dim);margin-bottom:6px;display:block;
+  }
+  .model-select{
+    width:100%;background:var(--console-bg);color:var(--console-text);
+    border:1px solid var(--console-border);border-radius:var(--radius-sm);
+    padding:7px 9px;font-size:13px;font-family:inherit;margin-bottom:12px;
+  }
+  .slider-row{margin-bottom:12px;}
+  .slider-row .slider-top{display:flex;justify-content:space-between;font-size:11.5px;color:var(--console-text-dim);margin-bottom:4px;}
+  .slider-row .slider-top span.val{color:var(--console-accent);font-family:var(--mono);font-weight:700;}
+  .slider-ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--console-text-dim);opacity:.75;margin-top:3px;}
+  .sidebar-hint{
+    margin-top:2px;font-size:11px;line-height:1.5;color:var(--console-text-dim);
+    background:rgba(138,180,248,0.08);border:1px solid rgba(138,180,248,0.25);
+    border-radius:var(--radius-sm);padding:7px 9px;
+  }
+  input[type=range]{
+    width:100%;-webkit-appearance:none;height:4px;border-radius:4px;background:var(--console-border);outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--console-accent);cursor:pointer;
+    border:2px solid #1f2023;
+  }
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--console-text-dim);}
+  .switch{position:relative;width:36px;height:20px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .slider-bg{
+    position:absolute;inset:0;background:var(--console-border);border-radius:999px;cursor:pointer;transition:.15s;
+  }
+  .switch .slider-bg::before{content:"";position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;}
+  .switch input:checked + .slider-bg{background:var(--accent);}
+  .switch input:checked + .slider-bg::before{transform:translateX(16px);}
+
+  .canvas-area details{
+    border:1px solid var(--console-border);border-radius:var(--radius);margin-bottom:12px;background:var(--console-panel);
+  }
+  .canvas-area summary{
+    padding:9px 12px;font-size:12.5px;font-weight:700;color:var(--console-text-dim);cursor:pointer;list-style:none;
+    display:flex;align-items:center;gap:6px;
+  }
+  .canvas-area summary::before{content:"▸";transition:transform .15s;}
+  .canvas-area details[open] summary::before{transform:rotate(90deg);}
+  .canvas-area summary::-webkit-details-marker{display:none;}
+  textarea, .example-input{
+    width:100%;background:var(--console-bg);color:var(--console-text);
+    border:1px solid var(--console-border);border-radius:var(--radius-sm);
+    padding:9px 10px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.5;
+  }
+  textarea:focus, .example-input:focus{outline:1px solid var(--accent);}
+  .sys-textarea{margin:0 12px 12px;width:calc(100% - 24px);min-height:60px;}
+
+  .fewshot-box{border:1px solid var(--console-border);border-radius:var(--radius);background:var(--console-panel);padding:10px 12px;margin-bottom:12px;}
+  .fewshot-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .example-row{
+    border:1px dashed var(--console-border);border-radius:var(--radius-sm);padding:8px;margin-bottom:8px;position:relative;
+  }
+  .example-row .ex-label{font-size:10.5px;color:var(--console-text-dim);margin-bottom:4px;font-weight:700;text-transform:uppercase;}
+  .example-row .example-input{min-height:40px;margin-bottom:6px;font-size:12px;}
+  .example-row .remove-ex{
+    position:absolute;top:6px;right:6px;background:transparent;border:none;color:var(--console-text-dim);cursor:pointer;font-size:13px;
+  }
+  .example-row .remove-ex:hover{color:var(--danger);}
+  .empty-hint{font-size:12px;color:var(--console-text-dim);font-style:italic;padding:4px 2px;}
+
+  .main-prompt-block{margin-bottom:10px;}
+  .main-prompt-block textarea{min-height:90px;}
+  .attach-chip{
+    display:inline-flex;align-items:center;gap:6px;margin-top:8px;
+    background:var(--console-panel-2);border:1px solid var(--console-border);border-radius:999px;
+    padding:5px 11px;font-size:12px;color:var(--console-text-dim);cursor:pointer;
+  }
+  .attach-chip.active{background:var(--accent-soft);color:var(--accent-dark);border-color:var(--accent);}
+  .attach-preview{
+    margin-top:8px;border:1px solid var(--console-border);border-radius:var(--radius-sm);
+    padding:8px;background:var(--console-bg);display:none;
+  }
+  .attach-preview.show{display:block;}
+
+  .run-btn{
+    width:100%;margin-top:6px;padding:10px;border-radius:var(--radius-sm);border:none;
+    background:var(--accent);color:#fff;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit;
+  }
+  .run-btn:hover{background:var(--accent-dark);}
+  .run-btn:disabled{background:#41434a;color:#8a8d95;cursor:not-allowed;}
+
+  .output-box{
+    margin-top:14px;border:1px solid var(--console-border);border-radius:var(--radius);
+    background:#151618;padding:12px 14px;min-height:70px;font-size:13px;line-height:1.65;
+    color:var(--console-text);
+  }
+  .output-box .placeholder{color:var(--console-text-dim);font-style:italic;}
+  .output-box h4{margin:0 0 8px;font-size:13.5px;color:var(--console-accent);}
+  .output-box p{margin:0 0 8px;}
+  .output-box ul,.output-box ol{margin:0 0 10px;padding-left:20px;}
+  .output-box li{margin-bottom:4px;}
+  .output-box strong{color:#fff;}
+  table.sim-table{border-collapse:collapse;width:100%;margin:8px 0 12px;font-size:12.5px;}
+  table.sim-table th,table.sim-table td{border:1px solid var(--console-border);padding:5px 8px;text-align:left;}
+  table.sim-table th{background:var(--console-panel-2);color:var(--console-accent);}
+  .alert-box{
+    border:1px solid var(--warning);background:var(--warning-soft);color:#8a4b00;
+    border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;line-height:1.5;
+  }
+
+  /* image / audio widgets */
+  .gen-caption{font-size:11.5px;color:var(--console-text-dim);margin-top:6px;font-style:italic;}
+  .audio-widget{
+    display:flex;align-items:center;gap:10px;background:var(--console-panel-2);
+    border:1px solid var(--console-border);border-radius:999px;padding:8px 14px;margin-top:6px;
+  }
+  .play-btn{
+    width:30px;height:30px;border-radius:50%;background:var(--accent);border:none;color:#fff;
+    cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;
+  }
+  .bars{display:flex;align-items:center;gap:2px;height:20px;flex:1;}
+  .bars span{width:3px;background:var(--console-accent);border-radius:2px;height:6px;transition:height .1s;}
+  .bars.playing span{animation:barbounce .8s ease-in-out infinite;}
+  .bars span:nth-child(odd){animation-delay:-.3s;}
+  .bars span:nth-child(3n){animation-delay:-.6s;}
+  @keyframes barbounce{0%,100%{height:6px;}50%{height:20px;}}
+
+  /* modal */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(20,22,26,0.6);display:none;
+    align-items:center;justify-content:center;z-index:100;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal-box{
+    width:520px;max-width:92vw;max-height:85vh;overflow-y:auto;
+    background:#fff;color:var(--text-primary);border-radius:12px;padding:20px 22px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+  .modal-box h3{margin:0 0 4px;font-size:16px;}
+  .modal-box .modal-sub{font-size:12.5px;color:var(--text-secondary);margin-bottom:16px;}
+  .deploy-step{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:10px;color:var(--text-faint);}
+  .deploy-step .dstat{width:18px;height:18px;border-radius:50%;border:2px solid #dfe2e8;flex-shrink:0;position:relative;}
+  .deploy-step.active .dstat{border-top-color:var(--accent);animation:spin .7s linear infinite;}
+  .deploy-step.done{color:var(--text-primary);}
+  .deploy-step.done .dstat{border:none;background:var(--success);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .deploy-success{display:none;margin-top:14px;}
+  .deploy-success.show{display:block;}
+  .url-box{
+    background:var(--manual-muted);border:1px solid var(--manual-border);border-radius:var(--radius-sm);
+    padding:9px 11px;font-family:var(--mono);font-size:12px;color:var(--accent-dark);margin:10px 0 14px;word-break:break-all;
+  }
+  .mini-chat{border:1px solid var(--manual-border);border-radius:var(--radius);overflow:hidden;}
+  .mini-chat-head{background:#1a73e8;color:#fff;padding:8px 12px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .mini-chat-body{height:170px;overflow-y:auto;padding:10px;background:#fafbfc;display:flex;flex-direction:column;gap:8px;}
+  .mini-msg{max-width:85%;padding:7px 10px;border-radius:10px;font-size:12.5px;line-height:1.45;}
+  .mini-msg.bot{background:#eef1f5;align-self:flex-start;border-bottom-left-radius:2px;}
+  .mini-msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:2px;}
+  .mini-chat-input{display:flex;border-top:1px solid var(--manual-border);}
+  .mini-chat-input input{flex:1;border:none;padding:9px 10px;font-size:12.5px;font-family:inherit;}
+  .mini-chat-input input:focus{outline:none;}
+  .mini-chat-input button{border:none;background:var(--accent);color:#fff;padding:0 14px;cursor:pointer;font-weight:700;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+
+  /* toast */
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:#202124;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;
+    opacity:0;pointer-events:none;transition:all .25s;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:900px){
+    .workspace{flex-direction:column;overflow-y:auto;}
+    .manual-panel,.console-panel{width:100%;min-width:0;}
+    .console-panel{min-height:600px;}
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ===================== TOP NAV ===================== -->
+  <div class="topnav">
+    <div class="brand"><span class="brand-mark">S</span>SkillSandbox</div>
+    <span class="badge-offline"><span class="dot"></span>Offline Simulation Mode (0 API Cost)</span>
+    <div class="lab-title"><b>GSP1154</b> — Prototyping Generative AI for Insurance in Agent Studio</div>
+    <div class="timer-block">
+      <div class="timer-display" id="timerDisplay">45:00</div>
+      <button class="btn btn-primary btn-sm" id="timerStartBtn">Start Lab</button>
+      <button class="btn btn-ghost btn-sm" id="timerResetBtn">Reset</button>
+    </div>
+  </div>
+
+  <!-- ===================== WORKSPACE ===================== -->
+  <div class="workspace">
+
+    <!-- ---------- LEFT: LAB MANUAL ---------- -->
+    <div class="manual-panel" id="manualPanel">
+      <div class="manual-header">
+        <h1>Lab Manual</h1>
+        <p>Work through each task below. Use <b>Copy</b> to grab a prompt, or <b>Insert into Console</b> to load it straight into the Agent Studio console on the right. Click <b>Run</b> in the console to generate a simulated response, then come back and hit <b>Check my progress</b>.</p>
+      </div>
+
+      <div id="taskContainer"></div>
+    </div>
+
+    <!-- ---------- RIGHT: MOCK CONSOLE ---------- -->
+    <div class="console-panel">
+      <div class="console-subheader">
+        <input class="title-input" id="promptTitle" value="Untitled Prompt" spellcheck="false">
+        <select class="region-select" id="regionSelect">
+          <option value="global">Global</option>
+          <option value="us-central1">us-central1</option>
+        </select>
+        <div class="subheader-spacer"></div>
+        <button class="console-btn" id="saveBtn">💾 Save</button>
+        <button class="console-btn" id="compareBtn">⇄ Compare</button>
+        <button class="console-btn deploy" id="deployBtn">🚀 Deploy as Web App</button>
+      </div>
+      <div class="studio-columns" id="studioColumns"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== DEPLOY MODAL ===================== -->
+<div class="modal-backdrop" id="deployModal">
+  <div class="modal-box">
+    <h3>Deploy as Web App</h3>
+    <div class="modal-sub">Packaging <b id="deployAppName">Untitled Prompt</b> as a hosted Cloud Run service.</div>
+    <div id="deploySteps"></div>
+    <div class="deploy-success" id="deploySuccess">
+      <div style="font-weight:700;color:var(--success);font-size:13.5px;margin-bottom:2px;">✅ Deployment successful</div>
+      <div style="font-size:12.5px;color:var(--text-secondary);">Your app is live at a simulated public test URL:</div>
+      <div class="url-box" id="deployUrl"></div>
+      <div class="mini-chat">
+        <div class="mini-chat-head">🤖 <span id="miniChatTitle">Deployed App Preview</span></div>
+        <div class="mini-chat-body" id="miniChatBody"></div>
+        <div class="mini-chat-input">
+          <input type="text" id="miniChatInput" placeholder="Try the deployed app…">
+          <button id="miniChatSend">Send</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="deployCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   CONTENT: prompts, outputs, snippet config
+   ============================================================ */
+
+const CONTENT = {
+  safeharborPrompt: "Build an underwriting assistant app for SafeHarbor Warehousing Co. SafeHarbor is a mid-size logistics company applying for a $2,000,000 commercial property and liability policy covering two distribution warehouses in Tampa, FL and Charlotte, NC. The app should analyze the submission, summarize the key underwriting risk factors, and generate clarifying questions for the underwriting team before quoting.",
+  safeharborSys: "You are an underwriting assistant for a commercial P&C insurer. Analyze commercial property and liability submissions and produce a structured risk summary plus follow-up questions. Be concise and use professional insurance terminology.",
+  safeharborOutput:
+`### Underwriting Risk Summary — SafeHarbor Warehousing Co.
+
+**Applicant:** SafeHarbor Warehousing Co. (Logistics / Third-Party Warehousing)
+**Coverage Requested:** $2,000,000 Commercial Property & General Liability
+**Locations:** Tampa, FL (Distribution Hub) · Charlotte, NC (Regional Warehouse)
+
+**Key Risk Factors**
+- Construction type and age not specified for either location — needed for property rating.
+- Tampa location falls within a coastal wind/hail exposure zone (FL Tier 1 counties).
+- No fire suppression system details provided; warehousing risk class assumes ESFR sprinklers unless stated otherwise.
+- Third-party goods storage increases bailee liability exposure.
+- No loss history submitted for the last 5 policy years.
+
+**Recommended Follow-Up Questions**
+1. What is the age and construction class (e.g., ISO Class 4 non-combustible) of each warehouse?
+2. Are ESFR or in-rack sprinkler systems installed at both locations?
+3. What is the average value of goods held in bailment at any given time?
+4. Has SafeHarbor filed any property or liability claims in the past 5 years?
+5. What security and access control measures are in place after hours?
+
+**Preliminary Risk Rating:** Moderate — pending construction and loss-history details.`,
+
+  coastalPrompt: "Coastal Goods Delivery operates a fleet of 42 last-mile delivery vans across three metro regions (Miami, Orlando, Jacksonville). Assess their commercial auto fleet risk for a policy renewal, factoring in telematics trends, delivery schedule pressure, and driver turnover.",
+  coastalOutput:
+`### Fleet Risk Assessment — Coastal Goods Delivery
+
+**Fleet Size:** 42 delivery vans · 3 metro regions (Miami, Orlando, Jacksonville)
+
+**Telematics Findings**
+- Hard-braking events up 14% quarter-over-quarter, concentrated in the Miami region.
+- Average speed-over-limit incidents: 2.3 per 1,000 miles driven (industry benchmark: 1.8).
+- Seatbelt compliance recorded at 96% fleet-wide.
+
+**Delivery Pressure Indicators**
+- Route density increased 22% following a new same-day delivery contract.
+- Average stops per shift rose from 38 to 51, correlating with the rise in hard-braking events.
+
+**Driver Turnover**
+- Annualized turnover rate: 47%, above the last-mile delivery industry average of ~35%.
+- 60% of active drivers have less than 6 months of tenure, reducing route familiarity.
+
+**Overall Risk Rating:** Moderate-High
+**Underwriting Recommendation:** Consider a telematics-based safety credit program and a driver retention requirement as a condition of renewal. An 8–12% premium increase is recommended absent mitigation commitments.`,
+
+  eleanorPrompt: "Extract the key details from this claim note: Policyholder Eleanor Vance (Policy #HO-58291) called to report a kitchen fire on 03/14/2026 caused by an unattended stovetop. Estimated damage to cabinetry and appliances is around $18,400. She has already contacted a restoration contractor.",
+  eleanorZeroShotOutput:
+`Eleanor Vance filed a claim (policy HO-58291) after a kitchen fire on March 14, 2026. It looks like the cause was an unattended stovetop, and damage to the cabinets and appliances is estimated at roughly $18,400.
+
+Note: she's already lined up a restoration contractor, so that might be worth following up on.
+
+Summary: fire damage claim, moderate cost, contractor already engaged.`,
+  eleanorExampleOutput:
+`Policy Number: HO-58291
+Claimant Name: Eleanor Vance
+Date of Loss: 03/14/2026
+Cause of Loss: Unattended stovetop (kitchen fire)
+Estimated Loss Amount: $18,400
+Additional Notes: Restoration contractor already engaged.`,
+  johnPrompt: "Extract the key details from this claim note: Policyholder John Sterling (Policy #HO-77213) reported a kitchen fire on 03/22/2026 due to a grease flare-up on the stovetop. Estimated loss is $24,750 including smoke damage to the ceiling. Local fire department responded and filed report #FD-2291.",
+  johnFewShotOutput:
+`Policy Number: HO-77213
+Claimant Name: John Sterling
+Date of Loss: 03/22/2026
+Cause of Loss: Grease flare-up (stovetop)
+Estimated Loss Amount: $24,750
+Additional Notes: Smoke damage to ceiling; Fire Department report #FD-2291 on file.`,
+
+  fieryGrillPrompt: "A customer named Marcus reports that his outdoor propane grill, nicknamed 'The Fiery Grill,' malfunctioned during a backyard cookout and caused a fire that damaged his wooden deck. He wants to know if this is covered under his homeowner's policy and what the claims process looks like.",
+  fieryGrillTemp02:
+`### Coverage Analysis — Deck Fire (Propane Grill Malfunction)
+
+**Likely Coverage:** Covered under Homeowners (HO-3) Section I — Dwelling/Other Structures, subject to the policy's fire peril and standard deductible.
+
+**Key Considerations**
+- Attached decks are typically covered under Coverage A (Dwelling); detached decks fall under Coverage B (Other Structures).
+- Sudden and accidental fire is a named peril under nearly all HO-3 policies — pre-existing negligence or intentional acts would void coverage.
+- If the grill itself is defective, a subrogation claim against the manufacturer may be pursued after the claim is paid.
+
+**Claims Process — Next Steps**
+1. File a First Notice of Loss (FNOL) with photos of the damaged deck and the grill.
+2. Retain the damaged grill as evidence for potential product-liability subrogation.
+3. Obtain a contractor repair estimate for the deck.
+4. Adjuster inspection typically scheduled within 3–5 business days.
+
+**Estimated Deductible Impact:** Standard homeowners deductible applies (commonly $1,000–$2,500).`,
+  fieryGrillTemp2:
+`### The Night the Grill Became a Dragon 🔥
+
+Picture it: Marcus, spatula in hand, the scent of charcoal (well, propane) in the air — and then, without warning, The Fiery Grill awakens its inner volcano! Perhaps it was a cosmic alignment of a loose valve and an overzealous flame, or maybe the grill simply grew tired of cooking burgers and decided to cook the deck instead.
+
+Coverage? Almost certainly, probably, likely yes — homeowner's policies tend to enjoy rescuing decks from fiery rebellions, though one should consult the sacred scrolls (the policy document) for the exact incantation of covered perils. It's possible the deck could be reborn as an even grander deck, perhaps with a moat, or a small tower, should the insurer feel generous.
+
+Next steps might involve summoning an adjuster-wizard, presenting the charred grill as a trophy of battle, and awaiting a check that may or may not arrive via carrier pigeon.
+
+**Note:** This response demonstrates high-temperature (2.0) sampling — notice the loss of structure, factual grounding, and consistent tone compared to the Temperature 0.2 response.`,
+  fieryGrillPro:
+`### Coverage & Liability Analysis — Deck Fire (Gemini 2.5 Pro)
+
+This loss involves two intersecting considerations the underwriting team should weigh together.
+
+**1. Peril Classification**
+Under the policy's Class A fire peril definition, sudden and accidental fire damage is covered regardless of ignition source, provided no policy exclusion (e.g., faulty maintenance, code violations) applies. The propane grill malfunction fits squarely within this definition unless post-loss investigation reveals Marcus knowingly used a recalled or damaged unit.
+
+**2. Priority Hierarchy for Claims Handling**
+Per standard Priority Hierarchy guidelines, this claim should be triaged as Priority 2 (property damage, no bodily injury, contained to a single structure) — expedited above routine claims but below any loss involving injury or total-loss exposure.
+
+**Recommendation**
+- Adjuster dispatch within 2 business days (Priority 2 SLA).
+- Flag for potential subrogation against the grill manufacturer if a product defect is confirmed.
+- No coverage red flags identified at this stage; proceed with standard FNOL workflow.
+
+*This response reflects Gemini 2.5 Pro's stronger multi-step reasoning and explicit grounding in named policy frameworks compared to the Flash model.*`,
+
+  timetablePrompt: "Extract the flight schedule from the attached timetable image and calculate what percentage of the flights depart before 12:00 PM.",
+  timetableOutput:
+`### Extracted Flight Schedule — timetable.png
+
+| Flight | Destination | Departure | Gate |
+|---|---|---|---|
+| BA 212 | London | 08:15 | A3 |
+| DL 447 | New York | 09:40 | B7 |
+| UA 918 | Chicago | 11:05 | C2 |
+| AF 083 | Paris | 12:30 | A1 |
+| LH 401 | Frankfurt | 13:50 | B4 |
+| EK 215 | Dubai | 15:20 | D6 |
+| QF 012 | Sydney | 16:45 | C9 |
+| AA 305 | Los Angeles | 18:10 | A7 |
+
+**Departure Time Calculation**
+Flights departing before 12:00 PM: BA 212 (08:15), DL 447 (09:40), UA 918 (11:05) → 3 flights.
+Total flights: 8.
+
+3 ÷ 8 = 0.375 → **37.5% of flights depart before 12:00 PM.**`,
+
+  honeybeePrompt: "A photorealistic macro photograph of a honeybee collecting pollen from a lavender flower, soft natural lighting, shallow depth of field, high detail on the bee's wings and fuzzy body.",
+  chirpPrompt: "Generate a warm, professional voice-over reading the phrase: 'Thank you for calling Meridian Insurance. Your call is important to us.'"
+};
+
+/* ============================================================
+   PROGRESS STATE
+   ============================================================ */
+const progress = {
+  t1_safeharbor:false, t1_deploy:false, t1_coastal:false,
+  t2_zeroshot:false, t2_fewshot:false,
+  t3_temp02:false, t3_temp2:false, t3_pro:false,
+  t4_timetable:false,
+  t5_honeybee:false, t5_chirp:false
+};
+
+const TASKS = [
+  {
+    id:'task1', num:1,
+    title:'Create Applications from Prompts',
+    sub:'Build a mini underwriting app straight from a natural-language prompt, then deploy it.',
+    flags:[
+      ['t1_safeharbor','Ran the SafeHarbor Warehousing risk-summary prompt'],
+      ['t1_deploy','Deployed the app as a web service (Cloud Run)'],
+      ['t1_coastal','Ran the Coastal Goods Delivery fleet-risk prompt']
+    ]
+  },
+  {
+    id:'task2', num:2,
+    title:'Design Effective Prompts',
+    sub:'Compare zero-shot vs. few-shot extraction on two kitchen-fire claims.',
+    flags:[
+      ['t2_zeroshot','Ran a zero-shot extraction on Eleanor Vance’s claim'],
+      ['t2_fewshot','Ran a few-shot extraction on John Sterling’s claim using an example']
+    ]
+  },
+  {
+    id:'task3', num:3,
+    title:'Compare Model Settings & Instructions',
+    sub:'The Fiery Grill scenario — see how Temperature and model choice change the answer.',
+    flags:[
+      ['t3_temp02','Ran The Fiery Grill prompt at Temperature 0.2'],
+      ['t3_temp2','Ran The Fiery Grill prompt at Temperature 2.0'],
+      ['t3_pro','Ran The Fiery Grill prompt on Gemini 2.5 Pro']
+    ]
+  },
+  {
+    id:'task4', num:4,
+    title:'Multimodal Analysis',
+    sub:'Extract a flight timetable from an image attachment and compute a departure percentage.',
+    flags:[
+      ['t4_timetable','Extracted the flight schedule and computed the departure percentage']
+    ]
+  },
+  {
+    id:'task5', num:5,
+    title:'Media Generation',
+    sub:'Generate a photorealistic image and synthesize a voice line.',
+    flags:[
+      ['t5_honeybee','Generated the photorealistic honeybee image'],
+      ['t5_chirp','Synthesized the Chirp voice-over line']
+    ]
+  }
+];
+
+/* ============================================================
+   SNIPPET → CONSOLE INSERT CONFIG
+   ============================================================ */
+const SNIPPETS = {
+  't1-safeharbor': { compare:false, a:{ sys:CONTENT.safeharborSys, main:CONTENT.safeharborPrompt, model:'gemini-3.5-flash', temp:0.7, examples:[], attach:false } },
+  't1-coastal':    { compare:false, a:{ sys:'', main:CONTENT.coastalPrompt, model:'gemini-3.5-flash', temp:0.7, examples:[], attach:false } },
+  't2-zeroshot':   { compare:false, a:{ sys:'', main:CONTENT.eleanorPrompt, model:'gemini-3.5-flash', temp:0.7, examples:[], attach:false } },
+  't2-fewshot':    { compare:false, a:{ sys:'', main:CONTENT.johnPrompt, model:'gemini-3.5-flash', temp:0.7,
+                        examples:[{input:CONTENT.eleanorPrompt, output:CONTENT.eleanorExampleOutput}], attach:false } },
+  't3-tempcompare':{ compare:true,
+                        a:{ sys:'', main:CONTENT.fieryGrillPrompt, model:'gemini-3.5-flash', temp:0.2, examples:[], attach:false },
+                        b:{ sys:'', main:CONTENT.fieryGrillPrompt, model:'gemini-3.5-flash', temp:2.0, examples:[], attach:false } },
+  't3-modelcompare':{ compare:true,
+                        a:{ sys:'', main:CONTENT.fieryGrillPrompt, model:'gemini-3.5-flash', temp:0.7, examples:[], attach:false },
+                        b:{ sys:'', main:CONTENT.fieryGrillPrompt, model:'gemini-2.5-pro', temp:0.7, examples:[], attach:false } },
+  't4-timetable':  { compare:false, a:{ sys:'', main:CONTENT.timetablePrompt, model:'gemini-3.5-flash', temp:0.7, examples:[], attach:true } },
+  't5-honeybee':   { compare:false, a:{ sys:'', main:CONTENT.honeybeePrompt, model:'Nano Banana 2', temp:0.9, examples:[], attach:false } },
+  't5-chirp':      { compare:false, a:{ sys:'', main:CONTENT.chirpPrompt, model:'Chirp 3', temp:0.9, examples:[], attach:false } }
+};
+
+/* ============================================================
+   SMALL UTILS
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function inline(s){
+  return escapeHtml(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>');
+}
+function mdToHtml(md){
+  const lines = md.split('\n');
+  let html='', inUl=false, inOl=false, tableRows=[];
+  function closeLists(){ if(inUl){html+='</ul>';inUl=false;} if(inOl){html+='</ol>';inOl=false;} }
+  function flushTable(){
+    if(tableRows.length){
+      html += '<table class="sim-table"><thead><tr>' + tableRows[0].map(c=>'<th>'+inline(c)+'</th>').join('') + '</tr></thead><tbody>';
+      for(let i=2;i<tableRows.length;i++){ html += '<tr>'+tableRows[i].map(c=>'<td>'+inline(c)+'</td>').join('')+'</tr>'; }
+      html += '</tbody></table>';
+      tableRows=[];
+    }
+  }
+  for(const raw of lines){
+    const line = raw.trim();
+    if(line.startsWith('|')){
+      const cells = line.split('|').map(s=>s.trim());
+      cells.shift(); if(cells.length && cells[cells.length-1]==='') cells.pop();
+      if(cells.every(c=>/^-+$/.test(c))){ tableRows.push(cells.map(()=>'—DIVIDER—')); }
+      else tableRows.push(cells);
+      continue;
+    } else if(tableRows.length){ flushTable(); }
+    if(line===''){ closeLists(); continue; }
+    if(line.startsWith('### ')){ closeLists(); html += '<h4>'+inline(line.slice(4))+'</h4>'; continue; }
+    if(/^\d+\.\s/.test(line)){ if(!inOl){closeLists(); html+='<ol>'; inOl=true;} html += '<li>'+inline(line.replace(/^\d+\.\s/,''))+'</li>'; continue; }
+    if(line.startsWith('- ')){ if(!inUl){closeLists(); html+='<ul>'; inUl=true;} html += '<li>'+inline(line.slice(2))+'</li>'; continue; }
+    closeLists();
+    html += '<p>'+inline(line)+'</p>';
+  }
+  closeLists(); flushTable();
+  return html.replace(/<t[hd]>—DIVIDER—<\/t[hd]>/g,'');
+}
+
+let toastTimer=null;
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 1900);
+}
+
+function copyToClipboard(text, btn){
+  const done = ()=>{
+    const original = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(()=>{ btn.textContent = original; }, 1100);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(done);
+  } else {
+    const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+    ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);
+    done();
+  }
+}
+
+/* ============================================================
+   BUILD LAB MANUAL
+   ============================================================ */
+function snippetHTML(id, label, text, meta){
+  return (
+    '<div class="snippet" data-snippet-block="'+id+'">' +
+      '<div class="snippet-head">' +
+        '<span class="snippet-label">'+label+'</span>' +
+        '<div class="snippet-actions">' +
+          '<button class="btn btn-ghost btn-sm act-copy" data-copy-target="'+id+'">Copy</button>' +
+          '<button class="btn btn-primary btn-sm act-insert" data-snippet="'+id+'">Insert into Console</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="snippet-body" id="text-'+id+'">'+escapeHtml(text)+'</div>' +
+      (meta ? '<div class="snippet-meta">'+meta+'</div>' : '') +
+    '</div>'
+  );
+}
+
+function buildManual(){
+  const container = $('taskContainer');
+  let html = '';
+
+  // TASK 1
+  html += taskWrapper('task1', 1, 'Create Applications from Prompts', 'App creation · Cloud Run deploy',
+    '<p>Agent Studio can scaffold a working mini-application directly from a natural-language description. In this task you\'ll prompt it to build an underwriting assistant, deploy it as a hosted web app, then test it against a second scenario.</p>' +
+    '<ol>' +
+      '<li>Insert the <b>SafeHarbor Warehousing</b> prompt below and click <b>Run</b> in the console.</li>' +
+      '<li>Click <b>Deploy as Web App</b> in the console sub-header and watch the build pipeline finish.</li>' +
+      '<li>Insert the <b>Coastal Goods Delivery</b> prompt and run it to test the app on a second submission.</li>' +
+    '</ol>' +
+    snippetHTML('t1-safeharbor','Prompt · SafeHarbor Warehousing', CONTENT.safeharborPrompt, 'Loads system instructions + main prompt · model: Gemini 3.5 Flash') +
+    snippetHTML('t1-coastal','Prompt · Coastal Goods Delivery', CONTENT.coastalPrompt, 'Loads main prompt into the same app')
+  );
+
+  // TASK 2
+  html += taskWrapper('task2', 2, 'Design Effective Prompts', 'Zero-shot vs. few-shot extraction',
+    '<p>Claims data arrives as messy free text. Compare how the model behaves with no examples (zero-shot) versus one worked example (few-shot).</p>' +
+    '<ol>' +
+      '<li>Insert the <b>zero-shot</b> block (Eleanor Vance, no examples) and run it — note the loose, inconsistent formatting.</li>' +
+      '<li>Insert the <b>few-shot</b> block (adds an Eleanor Vance example, then asks about John Sterling) and run it — note the clean, consistent key-value output.</li>' +
+    '</ol>' +
+    snippetHTML('t2-zeroshot','Zero-shot · Eleanor Vance', CONTENT.eleanorPrompt, 'No few-shot examples loaded') +
+    snippetHTML('t2-fewshot','Few-shot · John Sterling (+ example)', CONTENT.johnPrompt, 'Adds 1 few-shot example, then asks about John Sterling')
+  );
+
+  // TASK 3
+  html += taskWrapper('task3', 3, 'Compare Model Settings & Instructions', 'Temperature · Flash vs. Pro',
+    '<p>The Fiery Grill scenario is a good stress-test for model settings. Use Compare Mode to run the identical prompt under different configurations, side by side.</p>' +
+    '<ol>' +
+      '<li>Insert the <b>Temperature comparison</b> — Prompt A runs at 0.2, Prompt B at 2.0. Run both and contrast precision vs. imagination.</li>' +
+      '<li>Insert the <b>Model comparison</b> — Prompt A on Gemini 3.5 Flash, Prompt B on Gemini 2.5 Pro. Run both and note Pro\'s explicit references to Class A perils and Priority Hierarchy guidelines.</li>' +
+    '</ol>' +
+    snippetHTML('t3-tempcompare','Compare · Temperature 0.2 vs 2.0', CONTENT.fieryGrillPrompt, 'Enables Compare Mode · A: temp 0.2 · B: temp 2.0') +
+    snippetHTML('t3-modelcompare','Compare · Flash vs. Pro', CONTENT.fieryGrillPrompt, 'Enables Compare Mode · A: Gemini 3.5 Flash · B: Gemini 2.5 Pro')
+  );
+
+  // TASK 4
+  html += taskWrapper('task4', 4, 'Multimodal Analysis', 'Image extraction + math',
+    '<p>Agent Studio can reason over attached images. Insert the prompt below — it automatically attaches a mock <code>timetable.png</code> — then run it to extract a structured schedule and compute a percentage.</p>' +
+    '<ol>' +
+      '<li>Insert the timetable prompt (this toggles the attachment chip on).</li>' +
+      '<li>Run it and review the extracted table plus the departure-percentage calculation.</li>' +
+    '</ol>' +
+    snippetHTML('t4-timetable','Prompt · Flight Timetable', CONTENT.timetablePrompt, 'Attaches timetable.png automatically')
+  );
+
+  // TASK 5
+  html += taskWrapper('task5', 5, 'Media Generation', 'Image + voice synthesis',
+    '<p>Finish the lab by generating a photorealistic image and a synthesized voice line using the media-generation models.</p>' +
+    '<ol>' +
+      '<li>Insert the honeybee prompt (switches model to <b>Nano Banana 2</b>) and run it to render a simulated image.</li>' +
+      '<li>Insert the Chirp prompt (switches model to <b>Chirp 3</b>) and run it to render a simulated voice line.</li>' +
+    '</ol>' +
+    snippetHTML('t5-honeybee','Prompt · Photorealistic Honeybee', CONTENT.honeybeePrompt, 'Model: Nano Banana 2 (image)') +
+    snippetHTML('t5-chirp','Prompt · Chirp Voice-Over', CONTENT.chirpPrompt, 'Model: Chirp 3 (audio)')
+  );
+
+  container.innerHTML = html;
+}
+
+function taskWrapper(id, num, title, sub, bodyHtml){
+  return (
+    '<div class="task" id="'+id+'" data-task="'+id+'">' +
+      '<div class="task-head" data-toggle="'+id+'">' +
+        '<span class="task-num" id="num-'+id+'">'+num+'</span>' +
+        '<div>' +
+          '<div class="task-head-title">Task '+num+': '+title+'</div>' +
+          '<div class="task-head-sub">'+sub+'</div>' +
+        '</div>' +
+        '<span class="chevron">▶</span>' +
+      '</div>' +
+      '<div class="task-body">' +
+        bodyHtml +
+        '<div class="check-btn-row">' +
+          '<button class="btn btn-ghost btn-sm act-check" data-check="'+id+'">Check my progress</button>' +
+        '</div>' +
+        '<div class="progress-box" id="progress-'+id+'"></div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function renderTaskComplete(){
+  TASKS.forEach(t=>{
+    const done = t.flags.every(f=>progress[f[0]]);
+    const el = $('num-'+t.id);
+    if(!el) return;
+    el.classList.toggle('complete', done);
+    el.textContent = done ? '✓' : t.num;
+  });
+}
+
+function renderChecklist(taskId){
+  const task = TASKS.find(t=>t.id===taskId);
+  const box = $('progress-'+taskId);
+  const doneCount = task.flags.filter(f=>progress[f[0]]).length;
+  const total = task.flags.length;
+  let html = '<div class="p-summary '+(doneCount===total?'ok':'pending')+'">' +
+    (doneCount===total ? '✅ Task complete! ('+total+'/'+total+')' : doneCount+' of '+total+' steps complete') +
+    '</div>';
+  task.flags.forEach(f=>{
+    const done = progress[f[0]];
+    html += '<div class="p-item '+(done?'done':'todo')+'"><span class="ic">'+(done?'✓':'')+'</span>'+f[1]+'</div>';
+  });
+  box.innerHTML = html;
+  box.classList.add('show');
+}
+
+/* ============================================================
+   ACCORDION
+   ============================================================ */
+function initAccordion(){
+  $('taskContainer').addEventListener('click', e=>{
+    const head = e.target.closest('[data-toggle]');
+    if(head){
+      const id = head.getAttribute('data-toggle');
+      document.querySelectorAll('.task').forEach(t=>{
+        if(t.id===id){ t.classList.toggle('open'); }
+        else { t.classList.remove('open'); }
+      });
+      return;
+    }
+    const copyBtn = e.target.closest('.act-copy');
+    if(copyBtn){
+      const targetId = copyBtn.getAttribute('data-copy-target');
+      const text = $('text-'+targetId).textContent;
+      copyToClipboard(text, copyBtn);
+      return;
+    }
+    const insertBtn = e.target.closest('.act-insert');
+    if(insertBtn){
+      const key = insertBtn.getAttribute('data-snippet');
+      applySnippet(key);
+      return;
+    }
+    const checkBtn = e.target.closest('.act-check');
+    if(checkBtn){
+      renderChecklist(checkBtn.getAttribute('data-check'));
+      return;
+    }
+  });
+  document.querySelector('#task1').classList.add('open');
+}
+
+/* ============================================================
+   CONSOLE: build columns
+   ============================================================ */
+function buildColumn(panel){
+  const tag = panel==='a' ? 'PROMPT A' : 'PROMPT B';
+  return (
+    '<div class="studio-column col-'+panel+'">' +
+      '<span class="col-tag">'+tag+'</span>' +
+      '<div class="param-sidebar">' +
+        '<label class="field-label">Model</label>' +
+        '<select class="model-select" id="model-'+panel+'">' +
+          '<option value="gemini-3.5-flash">gemini-3.5-flash</option>' +
+          '<option value="gemini-2.5-pro">gemini-2.5-pro</option>' +
+          '<option value="Nano Banana 2">Nano Banana 2</option>' +
+          '<option value="Chirp 3">Chirp 3</option>' +
+        '</select>' +
+        '<div class="slider-row">' +
+          '<div class="slider-top"><span>Temperature</span><span class="val" id="tempVal-'+panel+'">0.7</span></div>' +
+          '<input type="range" id="temp-'+panel+'" min="0" max="2" step="0.1" value="0.7">' +
+          '<div class="slider-ticks"><span>0.0 precise</span><span>2.0 creative</span></div>' +
+        '</div>' +
+        '<div class="slider-row">' +
+          '<div class="slider-top"><span>Top-P</span><span class="val" id="toppVal-'+panel+'">0.95</span></div>' +
+          '<input type="range" id="topp-'+panel+'" min="0" max="1" step="0.05" value="0.95">' +
+        '</div>' +
+        '<div class="toggle-row">' +
+          '<span>Thinking Budget</span>' +
+          '<label class="switch"><input type="checkbox" id="thinking-'+panel+'"><span class="slider-bg"></span></label>' +
+        '</div>' +
+        '<div class="sidebar-hint">ℹ️ Temperature &amp; Model only change the response in Task 3 (The Fiery Grill). Other tasks respond the same regardless of these settings.</div>' +
+      '</div>' +
+      '<div class="canvas-area">' +
+        '<details>' +
+          '<summary>System Instructions</summary>' +
+          '<textarea class="sys-textarea" id="sys-'+panel+'" placeholder="Optional system instructions…"></textarea>' +
+        '</details>' +
+        '<div class="fewshot-box">' +
+          '<div class="fewshot-head">' +
+            '<label class="field-label" style="margin-bottom:0;">Few-Shot Examples</label>' +
+            '<button class="btn btn-ghost btn-sm" id="addEx-'+panel+'" type="button">+ Add Example</button>' +
+          '</div>' +
+          '<div id="exList-'+panel+'"><div class="empty-hint" id="exEmpty-'+panel+'">No examples added yet.</div></div>' +
+        '</div>' +
+        '<div class="main-prompt-block">' +
+          '<label class="field-label">Prompt</label>' +
+          '<textarea id="mainPrompt-'+panel+'" placeholder="Describe what you want the app or response to do…"></textarea>' +
+          '<div class="attach-chip" id="attachChip-'+panel+'" data-panel="'+panel+'">📎 <span>timetable.png</span> <input type="checkbox" id="attach-'+panel+'" style="display:none;"></div>' +
+          '<div class="attach-preview" id="attachPreview-'+panel+'">'+timetableSvg()+'</div>' +
+        '</div>' +
+        '<button class="run-btn" id="run-'+panel+'" disabled>▶ Run</button>' +
+        '<div class="output-box" id="output-'+panel+'"><span class="placeholder">Response will appear here after you click Run.</span></div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function timetableSvg(){
+  return '<svg viewBox="0 0 320 90" width="100%" height="90" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="320" height="90" fill="#101113"/>' +
+    '<text x="10" y="16" fill="#8ab4f8" font-size="10" font-family="monospace">DEPARTURES</text>' +
+    '<line x1="10" y1="22" x2="310" y2="22" stroke="#3c3d41"/>' +
+    '<text x="10" y="36" fill="#e8eaed" font-size="9" font-family="monospace">BA212  LONDON     08:15  A3</text>' +
+    '<text x="10" y="48" fill="#e8eaed" font-size="9" font-family="monospace">DL447  NEW YORK   09:40  B7</text>' +
+    '<text x="10" y="60" fill="#e8eaed" font-size="9" font-family="monospace">UA918  CHICAGO    11:05  C2</text>' +
+    '<text x="10" y="72" fill="#e8eaed" font-size="9" font-family="monospace">AF083  PARIS      12:30  A1</text>' +
+    '<text x="10" y="84" fill="#9aa0a6" font-size="8" font-family="monospace">…4 more flights (scroll table after run)</text>' +
+  '</svg>';
+}
+
+function initConsole(){
+  const cols = $('studioColumns');
+  cols.innerHTML = buildColumn('a') + buildColumn('b');
+  ['a','b'].forEach(bindPanel);
+
+  $('compareBtn').addEventListener('click', ()=>{
+    const isCompare = cols.classList.toggle('compare-mode');
+    $('compareBtn').classList.toggle('active', isCompare);
+  });
+  $('deployBtn').addEventListener('click', openDeployModal);
+  $('deployCloseBtn').addEventListener('click', closeDeployModal);
+  $('saveBtn').addEventListener('click', ()=>{
+    const title = $('promptTitle').value || 'Untitled Prompt';
+    try{ localStorage.setItem('skillsandbox_prompt', title); }catch(e){}
+    toast('Prompt "'+title+'" saved locally.');
+  });
+  $('miniChatSend').addEventListener('click', sendMiniChat);
+  $('miniChatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendMiniChat(); });
+}
+
+function bindPanel(panel){
+  const tempInput = $('temp-'+panel), toppInput = $('topp-'+panel);
+  tempInput.addEventListener('input', ()=>{ $('tempVal-'+panel).textContent = parseFloat(tempInput.value).toFixed(1); });
+  toppInput.addEventListener('input', ()=>{ $('toppVal-'+panel).textContent = parseFloat(toppInput.value).toFixed(2); });
+
+  $('addEx-'+panel).addEventListener('click', ()=> addExampleRow(panel));
+
+  const mainPrompt = $('mainPrompt-'+panel);
+  const runBtn = $('run-'+panel);
+  mainPrompt.addEventListener('input', ()=>{ runBtn.disabled = mainPrompt.value.trim()===''; });
+
+  $('attachChip-'+panel).addEventListener('click', ()=>{
+    const cb = $('attach-'+panel);
+    cb.checked = !cb.checked;
+    $('attachChip-'+panel).classList.toggle('active', cb.checked);
+    $('attachPreview-'+panel).classList.toggle('show', cb.checked);
+  });
+
+  runBtn.addEventListener('click', ()=> runPanel(panel));
+}
+
+function addExampleRow(panel, inputVal, outputVal){
+  const list = $('exList-'+panel);
+  const empty = $('exEmpty-'+panel);
+  if(empty) empty.remove();
+  const row = document.createElement('div');
+  row.className = 'example-row';
+  row.innerHTML =
+    '<button type="button" class="remove-ex">✕</button>' +
+    '<div class="ex-label">Example Input</div>' +
+    '<textarea class="example-input ex-in"></textarea>' +
+    '<div class="ex-label">Example Output</div>' +
+    '<textarea class="example-input ex-out"></textarea>';
+  row.querySelector('.ex-in').value = inputVal || '';
+  row.querySelector('.ex-out').value = outputVal || '';
+  row.querySelector('.remove-ex').addEventListener('click', ()=>{
+    row.remove();
+    if(!list.querySelector('.example-row')){
+      list.innerHTML = '<div class="empty-hint" id="exEmpty-'+panel+'">No examples added yet.</div>';
+    }
+  });
+  list.appendChild(row);
+}
+
+function clearExamples(panel){
+  $('exList-'+panel).innerHTML = '<div class="empty-hint" id="exEmpty-'+panel+'">No examples added yet.</div>';
+}
+
+function getExamples(panel){
+  const rows = $('exList-'+panel).querySelectorAll('.example-row');
+  return Array.from(rows).map(r=>({
+    input: r.querySelector('.ex-in').value,
+    output: r.querySelector('.ex-out').value
+  }));
+}
+
+/* ============================================================
+   APPLY SNIPPET → CONSOLE
+   ============================================================ */
+function applyToPanel(panel, cfg){
+  $('sys-'+panel).value = cfg.sys || '';
+  clearExamples(panel);
+  (cfg.examples||[]).forEach(ex=> addExampleRow(panel, ex.input, ex.output));
+  $('mainPrompt-'+panel).value = cfg.main || '';
+  $('run-'+panel).disabled = !(cfg.main && cfg.main.trim());
+  $('model-'+panel).value = cfg.model || 'gemini-3.5-flash';
+  $('temp-'+panel).value = cfg.temp!=null ? cfg.temp : 0.7;
+  $('tempVal-'+panel).textContent = (cfg.temp!=null?cfg.temp:0.7).toFixed(1);
+  $('topp-'+panel).value = 0.95;
+  $('toppVal-'+panel).textContent = '0.95';
+  const attachCb = $('attach-'+panel);
+  attachCb.checked = !!cfg.attach;
+  $('attachChip-'+panel).classList.toggle('active', !!cfg.attach);
+  $('attachPreview-'+panel).classList.toggle('show', !!cfg.attach);
+  $('output-'+panel).innerHTML = '<span class="placeholder">Response will appear here after you click Run.</span>';
+}
+
+function applySnippet(key){
+  const cfg = SNIPPETS[key];
+  if(!cfg) return;
+  const cols = $('studioColumns');
+  cols.classList.toggle('compare-mode', !!cfg.compare);
+  $('compareBtn').classList.toggle('active', !!cfg.compare);
+  applyToPanel('a', cfg.a);
+  if(cfg.compare && cfg.b) applyToPanel('b', cfg.b);
+
+  cols.classList.remove('flash-highlight');
+  void cols.offsetWidth;
+  cols.classList.add('flash-highlight');
+  toast('Inserted into console'+(cfg.compare?' (Compare Mode)':''));
+}
+
+/* ============================================================
+   SIMULATION ENGINE
+   ============================================================ */
+function getSimulatedResponse(promptText, settings){
+  const lower = (promptText||'').toLowerCase();
+  settings = settings || {};
+  const model = settings.model || 'gemini-3.5-flash';
+  const temp = settings.temp!=null ? settings.temp : 0.7;
+  const examplesCount = settings.examplesCount || 0;
+  const attached = !!settings.attached;
+
+  if(lower.includes('safeharbor')){
+    return { kind:'text', text: CONTENT.safeharborOutput, flags:['t1_safeharbor'] };
+  }
+  if(lower.includes('coastal goods') || lower.includes('coastal')){
+    return { kind:'text', text: CONTENT.coastalOutput, flags:['t1_coastal'] };
+  }
+  if(lower.includes('eleanor vance')){
+    if(examplesCount>0){
+      return { kind:'text', text: CONTENT.eleanorExampleOutput, flags:['t2_fewshot'] };
+    }
+    return { kind:'text', text: CONTENT.eleanorZeroShotOutput, flags:['t2_zeroshot'] };
+  }
+  if(lower.includes('john sterling')){
+    if(examplesCount>0){
+      return { kind:'text', text: CONTENT.johnFewShotOutput, flags:['t2_fewshot'] };
+    }
+    return { kind:'text', text: CONTENT.johnFewShotOutput, flags:['t2_zeroshot'] };
+  }
+  if(lower.includes('fiery grill')){
+    if(model==='gemini-2.5-pro'){
+      return { kind:'text', text: CONTENT.fieryGrillPro, flags:['t3_pro'] };
+    }
+    if(temp>=1.0){
+      return { kind:'text', text: CONTENT.fieryGrillTemp2, flags:['t3_temp2'] };
+    }
+    return { kind:'text', text: CONTENT.fieryGrillTemp02, flags:['t3_temp02'] };
+  }
+  if(lower.includes('timetable') || lower.includes('flight schedule') || attached){
+    return { kind:'text', text: CONTENT.timetableOutput, flags:['t4_timetable'] };
+  }
+  if(lower.includes('honeybee') || (lower.includes('bee') && lower.includes('lavender'))){
+    return { kind:'image', text:'Generating image with Nano Banana 2…', flags:['t5_honeybee'] };
+  }
+  if(lower.includes('chirp') || lower.includes('thank you for calling') || lower.includes('voice-over') || lower.includes('voice over')){
+    return { kind:'audio', text:'Synthesizing speech with Chirp 3…', flags:['t5_chirp'] };
+  }
+  return { kind:'fallback', text:null, flags:[] };
+}
+
+function typewriter(el, text, done){
+  el.innerHTML = '';
+  const pre = document.createElement('div');
+  pre.style.whiteSpace = 'pre-wrap';
+  pre.style.fontFamily = 'var(--mono)';
+  pre.style.fontSize = '12.5px';
+  pre.style.color = 'var(--console-text-dim)';
+  el.appendChild(pre);
+  let i=0;
+  (function step(){
+    if(i<=text.length){
+      pre.textContent = text.slice(0,i);
+      i++;
+      el.scrollTop = el.scrollHeight;
+      setTimeout(step, 20 + Math.random()*15);
+    } else {
+      if(done) done();
+    }
+  })();
+}
+
+function beeSvg(){
+  return '<svg viewBox="0 0 200 140" width="100%" height="150" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><radialGradient id="skyg" cx="50%" cy="30%" r="80%"><stop offset="0%" stop-color="#fdf6e3"/><stop offset="100%" stop-color="#e9d9a0"/></radialGradient></defs>' +
+    '<rect width="200" height="140" fill="url(#skyg)"/>' +
+    '<g transform="translate(30,90)">' +
+      '<path d="M0 0 Q10 -40 0 -80" stroke="#5b8a4a" stroke-width="4" fill="none"/>' +
+      '<ellipse cx="-3" cy="-70" rx="9" ry="5" fill="#9b7fc0" transform="rotate(-30 -3 -70)"/>' +
+      '<ellipse cx="4" cy="-78" rx="9" ry="5" fill="#a98bd0" transform="rotate(10 4 -78)"/>' +
+      '<ellipse cx="-6" cy="-58" rx="8" ry="4.5" fill="#9b7fc0" transform="rotate(-50 -6 -58)"/>' +
+      '<ellipse cx="6" cy="-90" rx="8" ry="4.5" fill="#b79bd8" transform="rotate(20 6 -90)"/>' +
+    '</g>' +
+    '<g transform="translate(120,55) scale(1.3)">' +
+      '<ellipse cx="14" cy="6" rx="15" ry="6" fill="#ffffff" opacity="0.85"/>' +
+      '<ellipse cx="-2" cy="-2" rx="14" ry="6" fill="#ffffff" opacity="0.7"/>' +
+      '<ellipse cx="6" cy="4" rx="9" ry="6.5" fill="#2b2419"/>' +
+      '<rect x="-1" y="0" width="3" height="9" fill="#f5c542" transform="translate(3,-4)"/>' +
+      '<rect x="4" y="0" width="3" height="9" fill="#2b2419" transform="translate(3,-4)"/>' +
+      '<rect x="9" y="0" width="3" height="9" fill="#f5c542" transform="translate(3,-4)"/>' +
+      '<circle cx="16" cy="2" r="3" fill="#2b2419"/>' +
+      '<line x1="17" y1="0" x2="21" y2="-4" stroke="#2b2419" stroke-width="1"/>' +
+      '<line x1="17" y1="1" x2="22" y2="0" stroke="#2b2419" stroke-width="1"/>' +
+    '</g>' +
+    '<text x="100" y="128" text-anchor="middle" font-size="8" fill="#7a6a3a" font-family="monospace">nano_banana_2 · simulated render</text>' +
+  '</svg>';
+}
+
+function renderMediaOutput(el, kind){
+  const wrap = document.createElement('div');
+  if(kind==='image'){
+    wrap.innerHTML = beeSvg() + '<div class="gen-caption">Simulated image output — no image-generation model was actually called. This placeholder illustrates where a photorealistic render would appear in Agent Studio.</div>';
+  } else {
+    const id = 'aw'+Math.random().toString(36).slice(2,8);
+    wrap.innerHTML =
+      '<div class="audio-widget">' +
+        '<button class="play-btn" id="'+id+'-play">▶</button>' +
+        '<div class="bars" id="'+id+'-bars">'+Array.from({length:24}).map(()=>'<span></span>').join('')+'</div>' +
+        '<span style="font-size:11px;color:var(--console-text-dim);">0:04</span>' +
+      '</div>' +
+      '<div class="gen-caption">Simulated audio output — Chirp 3 voice synthesis. Click play to preview the simulated waveform (no real audio is generated).</div>';
+    el.appendChild(wrap);
+    const btn = document.getElementById(id+'-play');
+    const bars = document.getElementById(id+'-bars');
+    let playing = false;
+    btn.addEventListener('click', ()=>{
+      playing = !playing;
+      btn.textContent = playing ? '❚❚' : '▶';
+      bars.classList.toggle('playing', playing);
+      if(playing) setTimeout(()=>{ if(playing){ playing=false; btn.textContent='▶'; bars.classList.remove('playing'); } }, 4000);
+    });
+    return;
+  }
+  el.appendChild(wrap);
+}
+
+function runPanel(panel){
+  const mainPrompt = $('mainPrompt-'+panel).value.trim();
+  if(!mainPrompt) return;
+  const model = $('model-'+panel).value;
+  const temp = parseFloat($('temp-'+panel).value);
+  const attached = $('attach-'+panel).checked;
+  const examples = getExamples(panel);
+  const out = $('output-'+panel);
+  $('run-'+panel).disabled = true;
+
+  const result = getSimulatedResponse(mainPrompt, { model, temp, examplesCount:examples.length, attached });
+
+  if(result.kind==='fallback'){
+    out.innerHTML = '<div class="alert-box">SkillSandbox: Input not recognized for Lab GSP1154. Use the lab manual on the left or click "Insert into Console" to test a valid scenario.</div>';
+    $('run-'+panel).disabled = false;
+    return;
+  }
+
+  if(result.kind==='text'){
+    typewriter(out, result.text, ()=>{
+      out.innerHTML = mdToHtml(result.text);
+      result.flags.forEach(f=>{ progress[f]=true; });
+      renderTaskComplete();
+      $('run-'+panel).disabled = false;
+    });
+  } else {
+    typewriter(out, result.text, ()=>{
+      out.innerHTML = '';
+      const intro = document.createElement('div');
+      intro.style.color = 'var(--console-text-dim)';
+      intro.style.marginBottom = '8px';
+      intro.textContent = result.text;
+      out.appendChild(intro);
+      renderMediaOutput(out, result.kind);
+      result.flags.forEach(f=>{ progress[f]=true; });
+      renderTaskComplete();
+      $('run-'+panel).disabled = false;
+    });
+  }
+}
+
+/* ============================================================
+   DEPLOY MODAL
+   ============================================================ */
+const DEPLOY_STEPS = [
+  'Packaging application source…',
+  'Building container image with Cloud Build…',
+  'Pushing image to Artifact Registry…',
+  'Provisioning Cloud Run service (us-central1)…',
+  'Allocating traffic to new revision…',
+  'Running health checks…'
+];
+
+function slugify(s){
+  return (s||'app').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'app';
+}
+
+async function openDeployModal(){
+  const modal = $('deployModal');
+  modal.classList.add('show');
+  const title = $('promptTitle').value || 'Untitled Prompt';
+  $('deployAppName').textContent = title;
+  $('deploySuccess').classList.remove('show');
+  const stepsEl = $('deploySteps');
+  stepsEl.innerHTML = DEPLOY_STEPS.map((s,i)=>
+    '<div class="deploy-step" id="dstep-'+i+'"><span class="dstat"></span><span>'+s+'</span></div>'
+  ).join('');
+
+  for(let i=0;i<DEPLOY_STEPS.length;i++){
+    const stepEl = $('dstep-'+i);
+    stepEl.classList.add('active');
+    await sleep(480 + Math.random()*260);
+    stepEl.classList.remove('active');
+    stepEl.classList.add('done');
+    stepEl.querySelector('.dstat').textContent = '✓';
+  }
+
+  const hash = Math.random().toString(36).slice(2,10);
+  const url = 'https://'+slugify(title)+'-'+hash+'-uc.a.run.app';
+  $('deployUrl').textContent = url;
+  $('miniChatTitle').textContent = title + ' — Live Preview';
+  $('miniChatBody').innerHTML = '';
+  addMiniMsg('bot', 'Hi! I\'m the '+title+' assistant, now live on Cloud Run. Ask me about a submission and I\'ll summarize the risk factors.');
+  $('deploySuccess').classList.add('show');
+  progress.t1_deploy = true;
+  renderTaskComplete();
+}
+
+function addMiniMsg(role, text){
+  const body = $('miniChatBody');
+  const div = document.createElement('div');
+  div.className = 'mini-msg '+role;
+  div.textContent = text;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+function sendMiniChat(){
+  const input = $('miniChatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  addMiniMsg('user', text);
+  input.value = '';
+  const result = getSimulatedResponse(text, { model:'gemini-3.5-flash', temp:0.7, examplesCount:0, attached:false });
+  setTimeout(()=>{
+    if(result.kind==='text'){
+      addMiniMsg('bot', result.text.replace(/[#*]/g,'').slice(0,400) + (result.text.length>400?'…':''));
+      result.flags.forEach(f=>{ progress[f]=true; });
+      renderTaskComplete();
+    } else if(result.kind==='fallback'){
+      addMiniMsg('bot', 'SkillSandbox: Input not recognized for Lab GSP1154. Try asking about SafeHarbor Warehousing or Coastal Goods Delivery.');
+    } else {
+      addMiniMsg('bot', result.text);
+      result.flags.forEach(f=>{ progress[f]=true; });
+      renderTaskComplete();
+    }
+  }, 500);
+}
+
+function closeDeployModal(){
+  $('deployModal').classList.remove('show');
+}
+
+/* ============================================================
+   TIMER
+   ============================================================ */
+const timer = { remaining: 45*60, running:false, handle:null };
+function formatTime(s){
+  const m = Math.floor(s/60), sec = s%60;
+  return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+}
+function renderTimer(){
+  const el = $('timerDisplay');
+  el.textContent = formatTime(timer.remaining);
+  el.classList.toggle('warn', timer.remaining<=300 && timer.remaining>0);
+  el.classList.toggle('done', timer.remaining<=0);
+}
+function startTimer(){
+  if(timer.running) return;
+  if(timer.remaining<=0) return;
+  timer.running = true;
+  $('timerStartBtn').textContent = 'Pause';
+  timer.handle = setInterval(()=>{
+    timer.remaining--;
+    renderTimer();
+    if(timer.remaining<=0){
+      clearInterval(timer.handle);
+      timer.running = false;
+      $('timerStartBtn').textContent = 'Start Lab';
+      toast('Lab time is up!');
+    }
+  }, 1000);
+}
+function pauseTimer(){
+  timer.running = false;
+  clearInterval(timer.handle);
+  $('timerStartBtn').textContent = 'Start Lab';
+}
+function resetTimer(){
+  pauseTimer();
+  timer.remaining = 45*60;
+  renderTimer();
+}
+function initTimer(){
+  renderTimer();
+  $('timerStartBtn').addEventListener('click', ()=>{
+    if(timer.running) pauseTimer(); else startTimer();
+  });
+  $('timerResetBtn').addEventListener('click', resetTimer);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  buildManual();
+  initAccordion();
+  initConsole();
+  initTimer();
+  renderTaskComplete();
+}
+document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
